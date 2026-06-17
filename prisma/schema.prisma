@@ -1,0 +1,604 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Clinic {
+  id               String           @id @default(uuid())
+  name             String
+  location         String
+  phone            String
+  status           ClinicStatus     @default(Active)
+  plan             ClinicPlan       @default(Basic)
+  monthlyFee       Float            @default(0)
+  performanceScore Int              @default(80)
+  aiModules        String           @db.LongText
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  aiLogs           AiLog[]
+  alerts           Alert[]
+  appointments     Appointment[]
+  auditLogs        AuditLog[]
+  insuranceChecks  InsuranceCheck[]
+  invoices         Invoice[]
+  labCases         LabCase[]
+  patients         Patient[]
+  saasInvoices     SaasInvoice[]
+  subscription     Subscription?
+  users            User[]
+  waitlistItems    WaitlistItem[]
+
+  @@map("clinics")
+}
+
+model User {
+  id                    String         @id @default(uuid())
+  clinicId              String?
+  name                  String
+  email                 String         @unique
+  password              String
+  role                  UserRole
+  status                UserStatus     @default(Pending_Approval)
+  avatarUrl             String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  phone                 String?
+  speciality            String?
+  assistantId           String?
+  hygienistId           String?
+  aiLogs                AiLog[]
+  alerts                Alert[]
+  assistantAppointments Appointment[]  @relation("AssistantAppointments")
+  doctorAppointments    Appointment[]  @relation("DoctorAppointments")
+  hygienistAppointments Appointment[]  @relation("HygienistAppointments")
+  appointments          Appointment[]  @relation("DentistAppointments")
+  auditLogs             AuditLog[]
+  patientProfile        Patient?       @relation("PatientUser")
+  refreshTokens         RefreshToken[]
+  clinic                Clinic?        @relation(fields: [clinicId], references: [id])
+
+  @@index([clinicId], map: "users_clinicId_fkey")
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @db.Text
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "refresh_tokens_userId_fkey")
+  @@map("refresh_tokens")
+}
+
+model Patient {
+  id                String             @id @default(uuid())
+  clinicId          String
+  userId            String?            @unique
+  name              String
+  age               Int
+  phone             String
+  email             String?
+  status            PatientStatus      @default(Inactive)
+  vitals            String?            @db.Text
+  allergies         String?
+  history           String?            @db.Text
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  address           String?
+  gender            String?
+  insuranceProvider String?
+  perioChartData    String?            @db.LongText
+  riskProfileData   String?            @db.LongText
+  appointments      Appointment[]
+  chairsideSessions ChairsideSession[]
+  clinicalNotes     ClinicalNote[]
+  invoices          Invoice[]
+  labCases          LabCase[]
+  odontogram        Odontogram?
+  clinic            Clinic             @relation(fields: [clinicId], references: [id])
+  user              User?              @relation("PatientUser", fields: [userId], references: [id])
+  prescriptions     Prescription[]
+  treatmentPlans    TreatmentPlan[]
+  xrayFiles         XrayFile[]
+
+  @@index([clinicId], map: "patients_clinicId_fkey")
+  @@map("patients")
+}
+
+model Appointment {
+  id                  String            @id @default(uuid())
+  clinicId            String
+  patientId           String
+  dentistId           String?
+  patientName         String
+  dentistName         String
+  hygienistName       String?
+  date                DateTime          @db.Date
+  time                String
+  duration            Int               @default(60)
+  status              AppointmentStatus @default(Scheduled)
+  type                String
+  notes               String?           @db.Text
+  assignedTo          String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  assignedAssistantId String?
+  assignedDoctorId    String?
+  assignedHygienistId String?
+  workflowStage       AppointmentStage  @default(SCHEDULED)
+  assignedAssistant   User?             @relation("AssistantAppointments", fields: [assignedAssistantId], references: [id])
+  assignedDoctor      User?             @relation("DoctorAppointments", fields: [assignedDoctorId], references: [id])
+  assignedHygienist   User?             @relation("HygienistAppointments", fields: [assignedHygienistId], references: [id])
+  clinic              Clinic            @relation(fields: [clinicId], references: [id])
+  dentist             User?             @relation("DentistAppointments", fields: [dentistId], references: [id])
+  patient             Patient           @relation(fields: [patientId], references: [id])
+  chairsideSession    ChairsideSession?
+
+  @@index([assignedAssistantId], map: "appointments_assignedAssistantId_fkey")
+  @@index([assignedDoctorId], map: "appointments_assignedDoctorId_fkey")
+  @@index([assignedHygienistId], map: "appointments_assignedHygienistId_fkey")
+  @@index([clinicId], map: "appointments_clinicId_fkey")
+  @@index([dentistId], map: "appointments_dentistId_fkey")
+  @@index([patientId], map: "appointments_patientId_fkey")
+  @@map("appointments")
+}
+
+model ChairsideSession {
+  id            String      @id @default(uuid())
+  clinicId      String
+  appointmentId String      @unique
+  patientId     String
+  tasks         String      @db.LongText
+  activeStage   String      @default("Prep")
+  timerSeconds  Int         @default(0)
+  timerRunning  Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patient       Patient     @relation(fields: [patientId], references: [id])
+
+  @@index([patientId], map: "chairside_sessions_patientId_fkey")
+  @@map("chairside_sessions")
+}
+
+model Odontogram {
+  id        String   @id @default(uuid())
+  clinicId  String
+  patientId String   @unique
+  chartData String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  @@map("odontograms")
+}
+
+model TreatmentPlan {
+  id        String          @id @default(uuid())
+  clinicId  String
+  patientId String
+  tooth     String
+  procedure String
+  cost      Float
+  status    TreatmentStatus @default(Proposed)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  patient   Patient         @relation(fields: [patientId], references: [id])
+
+  @@index([patientId], map: "treatment_plans_patientId_fkey")
+  @@map("treatment_plans")
+}
+
+model XrayFile {
+  id        String   @id @default(uuid())
+  clinicId  String
+  patientId String
+  name      String
+  date      DateTime @db.Date
+  notes     String?  @db.Text
+  isScanned Boolean  @default(false)
+  aiReport  String?  @db.Text
+  fileUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([patientId], map: "xray_files_patientId_fkey")
+  @@map("xray_files")
+}
+
+model ClinicalNote {
+  id        String   @id @default(uuid())
+  clinicId  String
+  patientId String
+  content   String   @db.LongText
+  authorId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([patientId], map: "clinical_notes_patientId_fkey")
+  @@map("clinical_notes")
+}
+
+model Prescription {
+  id        String   @id @default(uuid())
+  clinicId  String
+  patientId String
+  drug      String
+  dosage    String
+  frequency String
+  duration  String
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([patientId], map: "prescriptions_patientId_fkey")
+  @@map("prescriptions")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  clinicId      String
+  patientId     String
+  patientName   String
+  date          DateTime      @db.Date
+  dueDate       DateTime      @db.Date
+  amount        Float
+  tax           Float         @default(0)
+  discount      Float         @default(0)
+  insurancePaid Float         @default(0)
+  patientPaid   Float         @default(0)
+  status        InvoiceStatus @default(Unpaid)
+  items         String        @db.LongText
+  labCaseId     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  clinic        Clinic        @relation(fields: [clinicId], references: [id])
+  patient       Patient       @relation(fields: [patientId], references: [id])
+
+  @@index([clinicId], map: "invoices_clinicId_fkey")
+  @@index([patientId], map: "invoices_patientId_fkey")
+  @@map("invoices")
+}
+
+model LabCase {
+  id               String        @id @default(uuid())
+  clinicId         String
+  patientId        String
+  patientName      String
+  dentistName      String
+  type             LabCaseType
+  status           LabCaseStatus @default(Created)
+  expectedDelivery DateTime      @db.Date
+  cost             Float
+  notes            String?       @db.Text
+  attachments      String        @db.LongText
+  labName          String        @default("Pending Assignment")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  crownDetails     CrownCase?
+  implantDetails   ImplantCase?
+  clinic           Clinic        @relation(fields: [clinicId], references: [id])
+  patient          Patient       @relation(fields: [patientId], references: [id])
+
+  @@index([clinicId], map: "lab_cases_clinicId_fkey")
+  @@index([patientId], map: "lab_cases_patientId_fkey")
+  @@map("lab_cases")
+}
+
+model CrownCase {
+  id          String   @id @default(uuid())
+  caseId      String   @unique
+  toothNumber String
+  material    String   @default("Ceramic")
+  shade       String   @default("A1")
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  labCase     LabCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("crown_cases")
+}
+
+model ImplantCase {
+  id            String       @id @default(uuid())
+  caseId        String       @unique
+  stage         ImplantStage @default(Planning)
+  planningNotes String?      @db.Text
+  dimensions    String?
+  surgicalNotes String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  labCase       LabCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("implant_cases")
+}
+
+model AiLog {
+  id        String   @id @default(uuid())
+  clinicId  String
+  userId    String
+  module    String
+  prompt    String   @db.Text
+  response  String   @db.LongText
+  createdAt DateTime @default(now())
+  clinic    Clinic   @relation(fields: [clinicId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([clinicId], map: "ai_logs_clinicId_fkey")
+  @@index([userId], map: "ai_logs_userId_fkey")
+  @@map("ai_logs")
+}
+
+model SaasInvoice {
+  id              String   @id @default(uuid())
+  clinicId        String
+  clinicName      String
+  amount          Float
+  issueDate       DateTime @db.Date
+  status          String   @default("Unpaid")
+  plan            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  stripeInvoiceId String?  @unique
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId], map: "saas_invoices_clinicId_fkey")
+  @@map("saas_invoices")
+}
+
+model Plan {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  price         Float
+  features      String         @db.LongText
+  maxClinics    Int            @default(1)
+  maxUsers      Int            @default(5)
+  maxPatients   Int            @default(50)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  billingPeriod String         @default("Monthly")
+  status        String         @default("Active")
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                   String    @id @default(uuid())
+  clinicId             String    @unique
+  planId               String
+  stripeCustomerId     String?
+  stripeSubscriptionId String?   @unique
+  status               String    @default("inactive")
+  startDate            DateTime  @default(now())
+  endDate              DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  clinic               Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plan                 Plan      @relation(fields: [planId], references: [id])
+
+  @@index([planId], map: "subscriptions_planId_fkey")
+  @@map("subscriptions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  clinicId  String?
+  userId    String
+  action    String   @db.Text
+  clinic    String?
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  clinicRel Clinic?  @relation(fields: [clinicId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([clinicId], map: "audit_logs_clinicId_fkey")
+  @@index([userId], map: "audit_logs_userId_fkey")
+  @@map("audit_logs")
+}
+
+model Alert {
+  id        String        @id @default(uuid())
+  clinicId  String
+  userId    String?
+  role      UserRole?
+  title     String
+  message   String        @db.Text
+  type      AlertSeverity @default(info)
+  read      Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  clinic    Clinic        @relation(fields: [clinicId], references: [id])
+  user      User?         @relation(fields: [userId], references: [id])
+
+  @@index([clinicId], map: "alerts_clinicId_fkey")
+  @@index([userId], map: "alerts_userId_fkey")
+  @@map("alerts")
+}
+
+model WaitlistItem {
+  id            String   @id @default(uuid())
+  clinicId      String
+  patientName   String
+  phone         String
+  preferredTime String
+  priority      String
+  reason        String
+  addedTime     DateTime @default(now())
+  clinic        Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId], map: "waitlist_items_clinicId_fkey")
+  @@map("waitlist_items")
+}
+
+model InsuranceCheck {
+  id              String   @id @default(uuid())
+  clinicId        String
+  patientName     String
+  provider        String
+  policyNumber    String
+  status          String   @default("Pending")
+  coverageDetails String   @db.Text
+  lastChecked     DateTime @default(now())
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId], map: "insurance_checks_clinicId_fkey")
+  @@map("insurance_checks")
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  clinicId    String
+  invoiceId   String
+  patientName String
+  amount      Float
+  method      String
+  date        DateTime @db.Date
+  note        String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@map("payments")
+}
+
+model Claim {
+  id             String   @id @default(uuid())
+  clinicId       String
+  invoiceId      String
+  patientName    String
+  carrier        String
+  claimAmount    Float
+  approvedAmount Float    @default(0)
+  submittedDate  DateTime @db.Date
+  status         String
+  note           String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@map("claims")
+}
+
+model Statement {
+  id            String   @id @default(uuid())
+  clinicId      String
+  patientId     String
+  patientName   String
+  generatedDate DateTime @db.Date
+  periodStart   DateTime @db.Date
+  periodEnd     DateTime @db.Date
+  totalBilled   Float
+  totalPaid     Float
+  balance       Float
+  createdAt     DateTime @default(now())
+
+  @@map("statements")
+}
+
+enum UserRole {
+  super_admin
+  clinic_owner
+  dentist
+  hygienist
+  front_desk
+  billing_staff
+  lab_coordinator
+  dental_assistant
+  patient
+}
+
+enum UserStatus {
+  Approved
+  Pending_Approval
+  Suspended
+}
+
+enum ClinicStatus {
+  Active
+  Trialing
+  Suspended
+}
+
+enum ClinicPlan {
+  Basic
+  Premium
+  Enterprise
+  Trial
+}
+
+enum AppointmentStatus {
+  Scheduled
+  Checked_In
+  In_Progress
+  Ready_For_Doctor
+  Completed
+  Cancelled
+  No_Show
+}
+
+enum PatientStatus {
+  Active
+  Inactive
+}
+
+enum TreatmentStatus {
+  Proposed
+  Accepted
+  Completed
+  Rejected
+}
+
+enum InvoiceStatus {
+  Paid
+  Partial
+  Unpaid
+  Overdue
+}
+
+enum LabCaseStatus {
+  Created
+  Sent
+  In_Progress
+  Ready
+  Delivered
+}
+
+enum LabCaseType {
+  Crown
+  Implant
+  Bridge
+  Denture
+  Aligner
+  Retainer
+}
+
+enum ImplantStage {
+  Planning
+  Manufacturing
+  Ready
+  Delivered
+}
+
+enum AppointmentStage {
+  SCHEDULED
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  CLEANING_PENDING
+  TREATMENT_PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum AlertSeverity {
+  info
+  warning
+  success
+  critical
+}

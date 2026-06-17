@@ -1,0 +1,6 @@
+# dental-hms-backend
+node_modules/
+dist/
+.env
+*.log
+uploads/
