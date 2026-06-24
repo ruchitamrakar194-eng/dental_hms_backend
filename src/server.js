@@ -1,4 +1,4 @@
-'use strict';
+'use strict'; // Trigger reload: schema updated
 require('dotenv').config();
 
 const app = require('./app');

@@ -21,6 +21,49 @@ router.get(
 );
 
 router.get(
+  '/procedure-templates',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  controller.listProcedureTemplates
+);
+
+router.post(
+  '/procedure-templates',
+  authorize('super_admin', 'clinic_owner', 'dentist'),
+  controller.createProcedureTemplate
+);
+
+router.get(
+  '/custom-procedures',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  controller.listCustomProcedures
+);
+
+router.post(
+  '/custom-procedures',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  controller.createCustomProcedure
+);
+
+router.get(
+  '/custom-drugs',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  controller.listCustomDrugs
+);
+
+router.post(
+  '/custom-drugs',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  controller.createCustomDrug
+);
+
+router.delete(
+  '/procedure-templates/:templateId',
+  authorize('super_admin', 'clinic_owner', 'dentist'),
+  controller.deleteProcedureTemplate
+);
+
+
+router.get(
   '/:id',
   authorize(
     'super_admin', 'clinic_owner', 'dentist', 'dental_assistant',
@@ -112,6 +155,24 @@ router.put(
   '/:id/risk-profile',
   authorize('super_admin', 'clinic_owner', 'dentist', 'hygienist'),
   controller.updateRiskProfile
+);
+
+router.get(
+  '/:id/consent-forms',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist', 'patient'),
+  controller.listConsentForms
+);
+
+router.post(
+  '/:id/consent-forms',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant'),
+  controller.createConsentForm
+);
+
+router.put(
+  '/:id/consent-forms/:consentId',
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'patient'),
+  controller.updateConsentForm
 );
 
 module.exports = router;

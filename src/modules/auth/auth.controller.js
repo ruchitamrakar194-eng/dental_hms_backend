@@ -119,7 +119,7 @@ const registerClinic = async (req, res, next) => {
       aiModules: { diagnostic: false, recallSMS: false, workload: false },
     });
 
-    // 2. Create clinic_owner user linked to new clinic (Pending_Approval status)
+    // 2. Create clinic_owner user linked to new clinic (Approved status)
     const hashedPwd = await hashPassword(ownerPassword);
     const owner = await prisma.user.create({
       data: {
@@ -128,12 +128,12 @@ const registerClinic = async (req, res, next) => {
         password: hashedPwd,
         role: 'clinic_owner',
         clinicId: clinic.id,
-        status: 'Pending_Approval',
+        status: 'Approved',
       },
       select: { id: true, name: true, email: true, role: true, clinicId: true, status: true },
     });
 
-    return success(res, { clinic, owner }, 'Clinic registration submitted. Awaiting Super Admin approval.', 201);
+    return success(res, { clinic, owner }, 'Clinic registered successfully.', 201);
   } catch (err) {
     next(err);
   }

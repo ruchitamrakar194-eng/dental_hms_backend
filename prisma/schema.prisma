@@ -89,6 +89,8 @@ model Patient {
   vitals            String?            @db.Text
   allergies         String?
   history           String?            @db.Text
+  medicalConditions Json?
+  activeMedications Json?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   address           String?
@@ -107,6 +109,7 @@ model Patient {
   prescriptions     Prescription[]
   treatmentPlans    TreatmentPlan[]
   xrayFiles         XrayFile[]
+  consentForms      ConsentForm[]
 
   @@index([clinicId], map: "patients_clinicId_fkey")
   @@map("patients")
@@ -550,6 +553,8 @@ enum PatientStatus {
 enum TreatmentStatus {
   Proposed
   Accepted
+  Scheduled
+  In_Progress
   Completed
   Rejected
 }
@@ -602,3 +607,56 @@ enum AlertSeverity {
   success
   critical
 }
+
+model ConsentForm {
+  id           String    @id @default(uuid())
+  clinicId     String
+  patientId    String
+  patientName  String
+  type         String    // e.g. "Extraction", "Implant", "RCT"
+  status       String    // e.g. "Pending", "Signed"
+  content      String    @db.LongText
+  signature    String?   @db.LongText // Base64 signature
+  signedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId], map: "consent_forms_patientId_fkey")
+  @@map("consent_forms")
+}
+
+model ProcedureTemplate {
+  id        String   @id @default(uuid())
+  clinicId  String
+  title     String
+  content   String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("procedure_templates")
+}
+
+model CustomProcedure {
+  id          String   @id @default(uuid())
+  clinicId    String
+  value       String
+  label       String
+  defaultCost Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("custom_procedures")
+}
+
+model CustomDrug {
+  id        String   @id @default(uuid())
+  clinicId  String
+  value     String
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("custom_drugs")
+}
+

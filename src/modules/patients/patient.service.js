@@ -42,7 +42,7 @@ const listPatients = async ({ clinicId, userId, role }) => {
 
   const patients = await prisma.patient.findMany({
     where,
-    orderBy: { name: 'asc' },
+    orderBy: { createdAt: 'desc' },
     include: {
       _count: {
         select: {
@@ -52,7 +52,22 @@ const listPatients = async ({ clinicId, userId, role }) => {
       }
     }
   });
-  return patients.map(formatPatient);
+
+  const allPatientsSorted = await prisma.patient.findMany({
+    where: { clinicId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true }
+  });
+
+  const idMap = {};
+  allPatientsSorted.forEach((p, idx) => {
+    idMap[p.id] = `pat-${idx + 1}`;
+  });
+
+  return patients.map(p => ({
+    ...formatPatient(p),
+    displayId: idMap[p.id] || p.id
+  }));
 };
 
 /**
@@ -94,14 +109,26 @@ const getPatientById = async ({ id, clinicId }) => {
     }
   }
 
-  return formatPatient(patient);
+  const allPatientsSorted = await prisma.patient.findMany({
+    where: { clinicId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true }
+  });
+
+  const idx = allPatientsSorted.findIndex(p => p.id === patient.id);
+  const displayId = idx !== -1 ? `pat-${idx + 1}` : 'pat-1';
+
+  return {
+    ...formatPatient(patient),
+    displayId
+  };
 };
 
 /**
  * Create a new patient
  */
 const createPatient = async ({ clinicId, body }) => {
-  const { name, age, gender, phone, email, status, address, allergies, insuranceProvider, vitals, history, password } = body;
+  const { name, age, gender, phone, email, status, address, allergies, insuranceProvider, vitals, history, password, medicalConditions, activeMedications } = body;
 
   // Enforce plan maxPatients limit
   if (clinicId) {
@@ -163,6 +190,8 @@ const createPatient = async ({ clinicId, body }) => {
       vitals: vitals || '',
       history: history || '',
       userId,
+      medicalConditions: medicalConditions ? (typeof medicalConditions === 'string' ? JSON.parse(medicalConditions) : medicalConditions) : null,
+      activeMedications: activeMedications ? (typeof activeMedications === 'string' ? JSON.parse(activeMedications) : activeMedications) : null,
     },
   });
 
@@ -180,7 +209,7 @@ const updatePatient = async ({ id, clinicId, body }) => {
     throw Object.assign(new Error('Patient not found'), { statusCode: 404 });
   }
 
-  const { name, age, gender, phone, email, status, address, allergies, insuranceProvider, vitals, history, password } = body;
+  const { name, age, gender, phone, email, status, address, allergies, insuranceProvider, vitals, history, password, medicalConditions, activeMedications } = body;
 
   let newUserId = undefined;
 
@@ -252,6 +281,8 @@ const updatePatient = async ({ id, clinicId, body }) => {
       ...(vitals !== undefined && { vitals }),
       ...(history !== undefined && { history }),
       ...(newUserId && { userId: newUserId }),
+      ...(medicalConditions !== undefined && { medicalConditions: medicalConditions ? (typeof medicalConditions === 'string' ? JSON.parse(medicalConditions) : medicalConditions) : null }),
+      ...(activeMedications !== undefined && { activeMedications: activeMedications ? (typeof activeMedications === 'string' ? JSON.parse(activeMedications) : activeMedications) : null }),
     },
   });
 
@@ -401,9 +432,13 @@ const updatePerioChart = async ({ patientId, clinicId, perioChartData }) => {
   const patient = await prisma.patient.findFirst({ where: { id: patientId, clinicId } });
   if (!patient) throw Object.assign(new Error('Patient not found'), { statusCode: 404 });
 
+  const serializedData = typeof perioChartData === 'object' && perioChartData !== null
+    ? JSON.stringify(perioChartData)
+    : perioChartData;
+
   return prisma.patient.update({
     where: { id: patientId },
-    data: { perioChartData }
+    data: { perioChartData: serializedData }
   });
 };
 
@@ -411,9 +446,102 @@ const updateRiskProfile = async ({ patientId, clinicId, riskProfileData }) => {
   const patient = await prisma.patient.findFirst({ where: { id: patientId, clinicId } });
   if (!patient) throw Object.assign(new Error('Patient not found'), { statusCode: 404 });
 
+  const serializedData = typeof riskProfileData === 'object' && riskProfileData !== null
+    ? JSON.stringify(riskProfileData)
+    : riskProfileData;
+
   return prisma.patient.update({
     where: { id: patientId },
-    data: { riskProfileData }
+    data: { riskProfileData: serializedData }
+  });
+};
+
+const listConsentForms = async ({ patientId, clinicId }) => {
+  return prisma.consentForm.findMany({
+    where: { patientId, clinicId },
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
+const createConsentForm = async ({ patientId, clinicId, patientName, type, content }) => {
+  return prisma.consentForm.create({
+    data: {
+      clinicId,
+      patientId,
+      patientName,
+      type,
+      status: 'Pending',
+      content
+    }
+  });
+};
+
+const updateConsentForm = async ({ consentId, clinicId, signature, status, signedAt }) => {
+  return prisma.consentForm.update({
+    where: { id: consentId },
+    data: {
+      ...(signature && { signature }),
+      ...(status && { status }),
+      ...(signedAt && { signedAt: new Date(signedAt) })
+    }
+  });
+};
+
+const listProcedureTemplates = async ({ clinicId }) => {
+  return prisma.procedureTemplate.findMany({
+    where: { clinicId },
+    orderBy: { title: 'asc' }
+  });
+};
+
+const createProcedureTemplate = async ({ clinicId, title, content }) => {
+  return prisma.procedureTemplate.create({
+    data: {
+      clinicId,
+      title,
+      content
+    }
+  });
+};
+
+const deleteProcedureTemplate = async ({ templateId, clinicId }) => {
+  return prisma.procedureTemplate.delete({
+    where: { id: templateId }
+  });
+};
+
+const listCustomProcedures = async ({ clinicId }) => {
+  return prisma.customProcedure.findMany({
+    where: { clinicId },
+    orderBy: { createdAt: 'asc' }
+  });
+};
+
+const createCustomProcedure = async ({ clinicId, value, label, defaultCost }) => {
+  return prisma.customProcedure.create({
+    data: {
+      clinicId,
+      value,
+      label,
+      defaultCost
+    }
+  });
+};
+
+const listCustomDrugs = async ({ clinicId }) => {
+  return prisma.customDrug.findMany({
+    where: { clinicId },
+    orderBy: { createdAt: 'asc' }
+  });
+};
+
+const createCustomDrug = async ({ clinicId, value, label }) => {
+  return prisma.customDrug.create({
+    data: {
+      clinicId,
+      value,
+      label
+    }
   });
 };
 
@@ -433,6 +561,17 @@ module.exports = {
   createXray,
   updateXray,
   updatePerioChart,
-  updateRiskProfile
+  updateRiskProfile,
+  listConsentForms,
+  createConsentForm,
+  updateConsentForm,
+  listProcedureTemplates,
+  createProcedureTemplate,
+  deleteProcedureTemplate,
+  listCustomProcedures,
+  createCustomProcedure,
+  listCustomDrugs,
+  createCustomDrug
 };
+
 

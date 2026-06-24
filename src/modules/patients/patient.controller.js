@@ -206,6 +206,124 @@ const updateRiskProfile = async (req, res, next) => {
   }
 };
 
+const listConsentForms = async (req, res, next) => {
+  try {
+    const { id: patientId } = req.params;
+    const clinicId = req.clinicId || req.user.clinicId;
+    const result = await patientService.listConsentForms({ patientId, clinicId });
+    return success(res, result, 'Consent forms fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const createConsentForm = async (req, res, next) => {
+  try {
+    const { id: patientId } = req.params;
+    const clinicId = req.clinicId || req.user.clinicId;
+    const { patientName, type, content } = req.body;
+    const result = await patientService.createConsentForm({ patientId, clinicId, patientName, type, content });
+    return success(res, result, 'Consent form created successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateConsentForm = async (req, res, next) => {
+  try {
+    const { consentId } = req.params;
+    const clinicId = req.clinicId || req.user.clinicId;
+    const { signature, status, signedAt } = req.body;
+    const result = await patientService.updateConsentForm({ consentId, clinicId, signature, status, signedAt });
+    return success(res, result, 'Consent form updated successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const listProcedureTemplates = async (req, res, next) => {
+  try {
+    const clinicId = req.clinicId || req.user.clinicId;
+    const result = await patientService.listProcedureTemplates({ clinicId });
+    return success(res, result, 'Procedure templates fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const createProcedureTemplate = async (req, res, next) => {
+  try {
+    const clinicId = req.clinicId || req.user.clinicId;
+    const { title, content } = req.body;
+    const result = await patientService.createProcedureTemplate({ clinicId, title, content });
+    return success(res, result, 'Procedure template created successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteProcedureTemplate = async (req, res, next) => {
+  try {
+    const { templateId } = req.params;
+    const clinicId = req.clinicId || req.user.clinicId;
+    const result = await patientService.deleteProcedureTemplate({ templateId, clinicId });
+    return success(res, result, 'Procedure template deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const listCustomProcedures = async (req, res, next) => {
+  try {
+    const clinicId = req.clinicId || req.user.clinicId;
+    const result = await patientService.listCustomProcedures({ clinicId });
+    return success(res, result, 'Custom procedures fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const createCustomProcedure = async (req, res, next) => {
+  try {
+    const clinicId = req.clinicId || req.user.clinicId;
+    const { value, label, defaultCost } = req.body;
+    const result = await patientService.createCustomProcedure({
+      clinicId,
+      value,
+      label,
+      defaultCost: Number(defaultCost)
+    });
+    return success(res, result, 'Custom procedure created successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const listCustomDrugs = async (req, res, next) => {
+  try {
+    const clinicId = req.clinicId || req.user.clinicId;
+    const result = await patientService.listCustomDrugs({ clinicId });
+    return success(res, result, 'Custom drugs fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const createCustomDrug = async (req, res, next) => {
+  try {
+    const clinicId = req.clinicId || req.user.clinicId;
+    const { value, label } = req.body;
+    const result = await patientService.createCustomDrug({
+      clinicId,
+      value,
+      label
+    });
+    return success(res, result, 'Custom drug created successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   list,
   get,
@@ -222,5 +340,16 @@ module.exports = {
   createXray,
   updateXray,
   updatePerioChart,
-  updateRiskProfile
+  updateRiskProfile,
+  listConsentForms,
+  createConsentForm,
+  updateConsentForm,
+  listProcedureTemplates,
+  createProcedureTemplate,
+  deleteProcedureTemplate,
+  listCustomProcedures,
+  createCustomProcedure,
+  listCustomDrugs,
+  createCustomDrug
 };
+

@@ -63,7 +63,7 @@ const listAppointments = async ({ clinicId, role, userId, date }) => {
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
     include: {
       patient: {
-        select: { id: true, name: true, age: true, phone: true, email: true },
+        select: { id: true, name: true, age: true, phone: true, email: true, createdAt: true },
       },
       dentist: {
         select: { id: true, name: true, email: true },
@@ -80,7 +80,25 @@ const listAppointments = async ({ clinicId, role, userId, date }) => {
     },
   });
 
-  return appointments.map(formatAppointment);
+  const allPatientsSorted = await prisma.patient.findMany({
+    where: { clinicId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true }
+  });
+
+  const idMap = {};
+  allPatientsSorted.forEach((p, idx) => {
+    idMap[p.id] = `pat-${idx + 1}`;
+  });
+
+  const formatted = appointments.map(formatAppointment);
+  formatted.forEach(apt => {
+    if (apt.patient) {
+      apt.patient.displayId = idMap[apt.patient.id] || apt.patient.id;
+    }
+  });
+
+  return formatted;
 };
 
 /**
@@ -665,7 +683,13 @@ const formatChairsideSession = (session) => ({
   id: session.id,
   appointmentId: session.appointmentId,
   patientId: session.patientId,
-  tasks: session.tasks,
+  tasks: (() => {
+    try {
+      return typeof session.tasks === 'string' ? JSON.parse(session.tasks) : session.tasks;
+    } catch (_) {
+      return [];
+    }
+  })(),
   activeStage: session.activeStage,
   timerSeconds: session.timerSeconds,
   timerRunning: session.timerRunning,
@@ -690,7 +714,7 @@ const getChairsideSession = async (appointmentId, clinicId) => {
         clinicId,
         appointmentId,
         patientId: appointment.patientId,
-        tasks: DEFAULT_CHAIRSIDE_TASKS,
+        tasks: JSON.stringify(DEFAULT_CHAIRSIDE_TASKS),
         activeStage: 'Prep',
         timerSeconds: 0,
         timerRunning: false,
@@ -714,7 +738,7 @@ const upsertChairsideSession = async (appointmentId, clinicId, body) => {
   const session = await prisma.chairsideSession.upsert({
     where: { appointmentId },
     update: {
-      ...(tasks !== undefined && { tasks }),
+      ...(tasks !== undefined && { tasks: JSON.stringify(tasks) }),
       ...(activeStage !== undefined && { activeStage }),
       ...(timerSeconds !== undefined && { timerSeconds }),
       ...(timerRunning !== undefined && { timerRunning }),
@@ -723,7 +747,7 @@ const upsertChairsideSession = async (appointmentId, clinicId, body) => {
       clinicId,
       appointmentId,
       patientId: appointment.patientId,
-      tasks: tasks || DEFAULT_CHAIRSIDE_TASKS,
+      tasks: JSON.stringify(tasks || DEFAULT_CHAIRSIDE_TASKS),
       activeStage: activeStage || 'Prep',
       timerSeconds: timerSeconds ?? 0,
       timerRunning: timerRunning ?? false,
