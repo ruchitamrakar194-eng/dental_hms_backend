@@ -98,6 +98,9 @@ model Patient {
   insuranceProvider String?
   perioChartData    String?            @db.LongText
   riskProfileData   String?            @db.LongText
+  beforeImage       String?            @db.LongText
+  afterImage        String?            @db.LongText
+  signature         String?            @db.LongText
   appointments      Appointment[]
   chairsideSessions ChairsideSession[]
   clinicalNotes     ClinicalNote[]
@@ -208,10 +211,11 @@ model XrayFile {
   notes     String?  @db.Text
   isScanned Boolean  @default(false)
   aiReport  String?  @db.Text
-  fileUrl   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  patient   Patient  @relation(fields: [patientId], references: [id])
+  fileUrl         String?
+  annotationsData String?  @db.LongText
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  patient         Patient  @relation(fields: [patientId], references: [id])
 
   @@index([patientId], map: "xray_files_patientId_fkey")
   @@map("xray_files")

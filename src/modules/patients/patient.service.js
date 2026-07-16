@@ -77,6 +77,7 @@ const getPatientById = async ({ id, clinicId }) => {
   const patient = await prisma.patient.findFirst({
     where: { id, clinicId },
     include: {
+      clinic: true,
       odontogram: true,
       treatmentPlans: true,
       xrayFiles: true,
@@ -209,7 +210,7 @@ const updatePatient = async ({ id, clinicId, body }) => {
     throw Object.assign(new Error('Patient not found'), { statusCode: 404 });
   }
 
-  const { name, age, gender, phone, email, status, address, allergies, insuranceProvider, vitals, history, password, medicalConditions, activeMedications } = body;
+  const { name, age, gender, phone, email, status, address, allergies, insuranceProvider, vitals, history, password, medicalConditions, activeMedications, beforeImage, afterImage, signature } = body;
 
   let newUserId = undefined;
 
@@ -283,6 +284,9 @@ const updatePatient = async ({ id, clinicId, body }) => {
       ...(newUserId && { userId: newUserId }),
       ...(medicalConditions !== undefined && { medicalConditions: medicalConditions ? (typeof medicalConditions === 'string' ? JSON.parse(medicalConditions) : medicalConditions) : null }),
       ...(activeMedications !== undefined && { activeMedications: activeMedications ? (typeof activeMedications === 'string' ? JSON.parse(activeMedications) : activeMedications) : null }),
+      ...(beforeImage !== undefined && { beforeImage }),
+      ...(afterImage !== undefined && { afterImage }),
+      ...(signature !== undefined && { signature }),
     },
   });
 
@@ -411,7 +415,7 @@ const createXray = async ({ patientId, clinicId, name, notes, isScanned, aiRepor
   });
 };
 
-const updateXray = async ({ xrayId, clinicId, isScanned, aiReport }) => {
+const updateXray = async ({ xrayId, clinicId, isScanned, aiReport, annotationsData }) => {
   const xray = await prisma.xrayFile.findFirst({
     where: { id: xrayId, clinicId },
   });
@@ -424,6 +428,7 @@ const updateXray = async ({ xrayId, clinicId, isScanned, aiReport }) => {
     data: {
       ...(isScanned !== undefined && { isScanned }),
       ...(aiReport !== undefined && { aiReport }),
+      ...(annotationsData !== undefined && { annotationsData }),
     },
   });
 };

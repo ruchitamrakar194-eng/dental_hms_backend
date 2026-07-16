@@ -133,6 +133,36 @@ const registerClinic = async (req, res, next) => {
       select: { id: true, name: true, email: true, role: true, clinicId: true, status: true },
     });
 
+    // 3. Create an active Subscription for the new clinic
+    let planRecord = null;
+    if (selectedPlanName && selectedPlanName !== 'Trial' && selectedPlanName !== 'Trial Mode') {
+      planRecord = await prisma.plan.findFirst({
+        where: { name: { equals: selectedPlanName } }
+      });
+    }
+
+    if (!planRecord) {
+      planRecord = await prisma.plan.findFirst({
+        where: { name: 'Basic' }
+      }) || await prisma.plan.findFirst();
+    }
+
+    if (planRecord) {
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 1); // 1 Month Trial/Access
+
+      await prisma.subscription.create({
+        data: {
+          clinicId: clinic.id,
+          planId: planRecord.id,
+          status: 'active',
+          startDate,
+          endDate,
+        }
+      });
+    }
+
     return success(res, { clinic, owner }, 'Clinic registered successfully.', 201);
   } catch (err) {
     next(err);

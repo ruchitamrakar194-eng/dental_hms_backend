@@ -174,8 +174,8 @@ const updateXray = async (req, res, next) => {
   try {
     const { xrayId } = req.params;
     const clinicId = req.clinicId || req.user.clinicId;
-    const { isScanned, aiReport } = req.body;
-    const result = await patientService.updateXray({ xrayId, clinicId, isScanned, aiReport });
+    const { isScanned, aiReport, annotationsData } = req.body;
+    const result = await patientService.updateXray({ xrayId, clinicId, isScanned, aiReport, annotationsData });
     return success(res, result, 'X-ray updated successfully');
   } catch (err) {
     next(err);

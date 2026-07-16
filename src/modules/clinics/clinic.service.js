@@ -146,12 +146,55 @@ const deleteClinic = async (id) => {
     throw Object.assign(new Error('Clinic not found'), { statusCode: 404 });
   }
 
-  // Cascading deletes manually if required, but delete Clinic directly.
-  // Note: appointments, patients have FK relation to Clinic. In schema they don't have cascade delete.
-  // So we delete dependent records first or delete them as needed. But standard deleteClinic handles it.
+  // 1. Delete patient-dependent records first
+  const patientIds = (await prisma.patient.findMany({
+    where: { clinicId: id },
+    select: { id: true }
+  })).map(p => p.id);
+
+  if (patientIds.length > 0) {
+    await prisma.odontogram.deleteMany({ where: { patientId: { in: patientIds } } });
+    await prisma.treatmentPlan.deleteMany({ where: { patientId: { in: patientIds } } });
+    await prisma.xrayFile.deleteMany({ where: { patientId: { in: patientIds } } });
+    await prisma.clinicalNote.deleteMany({ where: { patientId: { in: patientIds } } });
+    await prisma.prescription.deleteMany({ where: { patientId: { in: patientIds } } });
+    await prisma.consentForm.deleteMany({ where: { patientId: { in: patientIds } } });
+    await prisma.chairsideSession.deleteMany({ where: { patientId: { in: patientIds } } });
+  }
+
+  // 2. Delete clinic-level records referencing clinicId
   await prisma.appointment.deleteMany({ where: { clinicId: id } });
+  
+  await prisma.invoice.deleteMany({ where: { clinicId: id } });
+  await prisma.labCase.deleteMany({ where: { clinicId: id } });
+  await prisma.payment.deleteMany({ where: { clinicId: id } });
+  await prisma.claim.deleteMany({ where: { clinicId: id } });
+  await prisma.statement.deleteMany({ where: { clinicId: id } });
+  
+  await prisma.aiLog.deleteMany({ where: { clinicId: id } });
+  await prisma.auditLog.deleteMany({ where: { clinicId: id } });
+  await prisma.alert.deleteMany({ where: { clinicId: id } });
+  
+  await prisma.procedureTemplate.deleteMany({ where: { clinicId: id } });
+  await prisma.customProcedure.deleteMany({ where: { clinicId: id } });
+  await prisma.customDrug.deleteMany({ where: { clinicId: id } });
+
+  // Delete patients after all patient-dependent clinic-level records are deleted
   await prisma.patient.deleteMany({ where: { clinicId: id } });
+
+
+  // Delete all users of this clinic (and their refresh tokens)
+  const userIds = (await prisma.user.findMany({
+    where: { clinicId: id },
+    select: { id: true }
+  })).map(u => u.id);
+
+  if (userIds.length > 0) {
+    await prisma.refreshToken.deleteMany({ where: { userId: { in: userIds } } });
+  }
   await prisma.user.deleteMany({ where: { clinicId: id } });
+
+  // 3. Delete the clinic itself (cascade delete for Subscription, SaasInvoice, WaitlistItem, InsuranceCheck via DB)
   await prisma.clinic.delete({
     where: { id },
   });
