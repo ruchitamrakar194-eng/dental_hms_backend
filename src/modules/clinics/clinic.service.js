@@ -118,6 +118,15 @@ const updateClinic = async (id, body) => {
   let calculatedMonthlyFee = monthlyFee !== undefined ? Number(monthlyFee) : undefined;
   let targetPlanName = plan ? mapToClinicPlan(plan) : undefined;
 
+  const oldPlanName = clinic.plan;
+  const planChanged = targetPlanName && targetPlanName !== oldPlanName;
+  let calculatedClinicStatus = status;
+
+  if (planChanged) {
+    const isTrial = targetPlanName === 'Trial' || targetPlanName === 'Trial Mode';
+    calculatedClinicStatus = isTrial ? 'Trialing' : 'Suspended';
+  }
+
   // If plan is updated, also update the clinic's Subscription to apply new limits instantly
   if (targetPlanName) {
     const dbPlan = await prisma.plan.findFirst({
@@ -136,6 +145,21 @@ const updateClinic = async (id, body) => {
           status: 'active',
         }
       });
+
+      // Automatically generate a new unpaid SaaS invoice on plan changes
+      if (planChanged) {
+        const isTrial = targetPlanName === 'Trial' || targetPlanName === 'Trial Mode';
+        await prisma.saasInvoice.create({
+          data: {
+            clinicId: id,
+            clinicName: name || clinic.name,
+            amount: dbPlan.price,
+            issueDate: new Date(),
+            status: isTrial ? 'Paid' : 'Unpaid',
+            plan: targetPlanName,
+          }
+        });
+      }
     }
   }
 
@@ -145,7 +169,7 @@ const updateClinic = async (id, body) => {
       ...(name && { name }),
       ...(location && { location }),
       ...(phone && { phone }),
-      ...(status && { status }),
+      ...(calculatedClinicStatus && { status: calculatedClinicStatus }),
       ...(targetPlanName && { plan: targetPlanName }),
       ...(calculatedMonthlyFee !== undefined && { monthlyFee: calculatedMonthlyFee }),
       ...(performanceScore !== undefined && { performanceScore: Number(performanceScore) }),

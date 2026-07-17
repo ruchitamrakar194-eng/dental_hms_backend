@@ -45,7 +45,7 @@ const register = async ({ name, email, password, role, clinicId, avatarUrl }) =>
   const user = await prisma.user.create({
     data: {
       name,
-      email,
+      email: email.toLowerCase(),
       password: hashedPwd,
       role,
       clinicId: clinicId || null,
@@ -68,7 +68,7 @@ const register = async ({ name, email, password, role, clinicId, avatarUrl }) =>
  */
 const login = async ({ email, password }) => {
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: email.toLowerCase() },
     include: { patientProfile: true, clinic: true }
   });
 
