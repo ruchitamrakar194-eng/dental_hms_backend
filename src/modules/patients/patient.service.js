@@ -82,6 +82,7 @@ const getPatientById = async ({ id, clinicId }) => {
       treatmentPlans: true,
       xrayFiles: true,
       prescriptions: true,
+      labCases: true,
       clinicalNotes: {
         orderBy: {
           createdAt: 'desc'
