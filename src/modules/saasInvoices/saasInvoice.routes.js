@@ -62,6 +62,19 @@ router.put('/:id', async (req, res, next) => {
         ...(plan && { plan }),
       },
     });
+
+    // Automatically sync clinic status with payment state
+    if (status) {
+      await prisma.clinic.update({
+        where: { id: updated.clinicId },
+        data: {
+          status: status === 'Paid'
+            ? (updated.plan === 'Trial' || updated.plan === 'Trial Mode' ? 'Trialing' : 'Active')
+            : 'Suspended'
+        }
+      });
+    }
+
     return success(res, updated, 'SaaS Invoice updated successfully');
   } catch (err) {
     next(err);

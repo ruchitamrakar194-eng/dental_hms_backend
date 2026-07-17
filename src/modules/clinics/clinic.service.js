@@ -115,6 +115,30 @@ const updateClinic = async (id, body) => {
     ? (typeof aiModules === 'string' ? aiModules : JSON.stringify(aiModules))
     : undefined;
 
+  let calculatedMonthlyFee = monthlyFee !== undefined ? Number(monthlyFee) : undefined;
+  let targetPlanName = plan ? mapToClinicPlan(plan) : undefined;
+
+  // If plan is updated, also update the clinic's Subscription to apply new limits instantly
+  if (targetPlanName) {
+    const dbPlan = await prisma.plan.findFirst({
+      where: { name: { equals: targetPlanName } }
+    });
+    if (dbPlan) {
+      if (calculatedMonthlyFee === undefined) {
+        calculatedMonthlyFee = dbPlan.price;
+      }
+      await prisma.subscription.upsert({
+        where: { clinicId: id },
+        update: { planId: dbPlan.id, status: 'active' },
+        create: {
+          clinicId: id,
+          planId: dbPlan.id,
+          status: 'active',
+        }
+      });
+    }
+  }
+
   const updated = await prisma.clinic.update({
     where: { id },
     data: {
@@ -122,8 +146,8 @@ const updateClinic = async (id, body) => {
       ...(location && { location }),
       ...(phone && { phone }),
       ...(status && { status }),
-      ...(plan && { plan: mapToClinicPlan(plan) }),
-      ...(monthlyFee !== undefined && { monthlyFee: Number(monthlyFee) }),
+      ...(targetPlanName && { plan: targetPlanName }),
+      ...(calculatedMonthlyFee !== undefined && { monthlyFee: calculatedMonthlyFee }),
       ...(performanceScore !== undefined && { performanceScore: Number(performanceScore) }),
       ...(serializedAiModules !== undefined && { aiModules: serializedAiModules }),
     },
@@ -183,7 +207,7 @@ const deleteClinic = async (id) => {
   await prisma.patient.deleteMany({ where: { clinicId: id } });
 
 
-  // Delete all users of this clinic (and their refresh tokens)
+  // Delete all users of this clinic (and their refresh tokens, audit logs, AI logs, alerts)
   const userIds = (await prisma.user.findMany({
     where: { clinicId: id },
     select: { id: true }
@@ -191,6 +215,9 @@ const deleteClinic = async (id) => {
 
   if (userIds.length > 0) {
     await prisma.refreshToken.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.auditLog.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.aiLog.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.alert.deleteMany({ where: { userId: { in: userIds } } });
   }
   await prisma.user.deleteMany({ where: { clinicId: id } });
 

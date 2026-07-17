@@ -108,7 +108,7 @@ model Patient {
   labCases          LabCase[]
   odontogram        Odontogram?
   clinic            Clinic             @relation(fields: [clinicId], references: [id])
-  user              User?              @relation("PatientUser", fields: [userId], references: [id])
+  user              User?              @relation("PatientUser", fields: [userId], references: [id], onDelete: SetNull)
   prescriptions     Prescription[]
   treatmentPlans    TreatmentPlan[]
   xrayFiles         XrayFile[]
@@ -139,11 +139,11 @@ model Appointment {
   assignedDoctorId    String?
   assignedHygienistId String?
   workflowStage       AppointmentStage  @default(SCHEDULED)
-  assignedAssistant   User?             @relation("AssistantAppointments", fields: [assignedAssistantId], references: [id])
-  assignedDoctor      User?             @relation("DoctorAppointments", fields: [assignedDoctorId], references: [id])
-  assignedHygienist   User?             @relation("HygienistAppointments", fields: [assignedHygienistId], references: [id])
+  assignedAssistant   User?             @relation("AssistantAppointments", fields: [assignedAssistantId], references: [id], onDelete: SetNull)
+  assignedDoctor      User?             @relation("DoctorAppointments", fields: [assignedDoctorId], references: [id], onDelete: SetNull)
+  assignedHygienist   User?             @relation("HygienistAppointments", fields: [assignedHygienistId], references: [id], onDelete: SetNull)
   clinic              Clinic            @relation(fields: [clinicId], references: [id])
-  dentist             User?             @relation("DentistAppointments", fields: [dentistId], references: [id])
+  dentist             User?             @relation("DentistAppointments", fields: [dentistId], references: [id], onDelete: SetNull)
   patient             Patient           @relation(fields: [patientId], references: [id])
   chairsideSession    ChairsideSession?
 
@@ -339,7 +339,7 @@ model AiLog {
   response  String   @db.LongText
   createdAt DateTime @default(now())
   clinic    Clinic   @relation(fields: [clinicId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([clinicId], map: "ai_logs_clinicId_fkey")
   @@index([userId], map: "ai_logs_userId_fkey")
@@ -407,7 +407,7 @@ model AuditLog {
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())
   clinicRel Clinic?  @relation(fields: [clinicId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([clinicId], map: "audit_logs_clinicId_fkey")
   @@index([userId], map: "audit_logs_userId_fkey")
@@ -425,7 +425,7 @@ model Alert {
   read      Boolean       @default(false)
   createdAt DateTime      @default(now())
   clinic    Clinic        @relation(fields: [clinicId], references: [id])
-  user      User?         @relation(fields: [userId], references: [id])
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([clinicId], map: "alerts_clinicId_fkey")
   @@index([userId], map: "alerts_userId_fkey")

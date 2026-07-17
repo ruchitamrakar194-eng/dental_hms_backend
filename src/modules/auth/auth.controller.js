@@ -107,13 +107,14 @@ const registerClinic = async (req, res, next) => {
       }
     }
 
-    // 1. Create the clinic first (Trialing status, no auth required)
+    // 1. Create the clinic first (Trialing/Suspended status depending on plan, no auth required)
+    const isTrial = selectedPlanName === 'Trial' || selectedPlanName === 'Trial Mode';
     const clinic = await clinicService.createClinic({
       name: clinicName,
       location,
       phone: phone || '',
       plan: selectedPlanName,
-      status: selectedPlanName === 'Trial' || selectedPlanName === 'Trial Mode' ? 'Trialing' : 'Active',
+      status: isTrial ? 'Trialing' : 'Suspended',
       monthlyFee,
       performanceScore: 80,
       aiModules: { diagnostic: false, recallSMS: false, workload: false },
@@ -133,9 +134,21 @@ const registerClinic = async (req, res, next) => {
       select: { id: true, name: true, email: true, role: true, clinicId: true, status: true },
     });
 
+    // Create automatic initial invoice
+    await prisma.saasInvoice.create({
+      data: {
+        clinicId: clinic.id,
+        clinicName: clinic.name,
+        amount: monthlyFee,
+        issueDate: new Date(),
+        status: isTrial ? 'Paid' : 'Unpaid',
+        plan: selectedPlanName,
+      }
+    });
+
     // 3. Create an active Subscription for the new clinic
     let planRecord = null;
-    if (selectedPlanName && selectedPlanName !== 'Trial' && selectedPlanName !== 'Trial Mode') {
+    if (selectedPlanName && !isTrial) {
       planRecord = await prisma.plan.findFirst({
         where: { name: { equals: selectedPlanName } }
       });

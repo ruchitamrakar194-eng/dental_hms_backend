@@ -90,6 +90,12 @@ const login = async ({ email, password }) => {
   }
 
   if (user.clinic && user.clinic.status === 'Suspended') {
+    const unpaidInvoice = await prisma.saasInvoice.findFirst({
+      where: { clinicId: user.clinicId, status: 'Unpaid' }
+    });
+    if (unpaidInvoice) {
+      throw Object.assign(new Error("Your clinic's account is suspended due to an unpaid invoice. Please wait for Super Admin payment verification or contact the administrator."), { statusCode: 403 });
+    }
     throw Object.assign(new Error("Your clinic's account is suspended. Please contact the administrator."), { statusCode: 403 });
   }
 
