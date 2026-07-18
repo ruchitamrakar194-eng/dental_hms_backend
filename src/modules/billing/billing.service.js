@@ -200,6 +200,7 @@ const listInvoices = async (clinicId, userId, role) => {
   }
   return prisma.invoice.findMany({
     where,
+    include: { clinic: true },
     orderBy: { date: 'desc' }
   });
 };
