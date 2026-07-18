@@ -128,7 +128,7 @@ router.delete(
 
 router.post(
   '/:id/notes',
-  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist', 'lab_coordinator'),
   controller.createClinicalNote
 );
 
