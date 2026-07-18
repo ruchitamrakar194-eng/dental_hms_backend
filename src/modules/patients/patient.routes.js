@@ -34,25 +34,25 @@ router.post(
 
 router.get(
   '/custom-procedures',
-  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist', 'lab_coordinator'),
   controller.listCustomProcedures
 );
 
 router.post(
   '/custom-procedures',
-  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist', 'lab_coordinator'),
   controller.createCustomProcedure
 );
 
 router.get(
   '/custom-drugs',
-  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist', 'lab_coordinator'),
   controller.listCustomDrugs
 );
 
 router.post(
   '/custom-drugs',
-  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist'),
+  authorize('super_admin', 'clinic_owner', 'dentist', 'dental_assistant', 'hygienist', 'lab_coordinator'),
   controller.createCustomDrug
 );
 
