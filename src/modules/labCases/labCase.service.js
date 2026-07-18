@@ -1,6 +1,24 @@
 'use strict';
 const prisma = require('../../config/db');
 
+const mapStatusToDb = (status) => {
+  if (status === 'In Progress') return 'In_Progress';
+  return status;
+};
+
+const mapStatusFromDb = (status) => {
+  if (status === 'In_Progress') return 'In Progress';
+  return status;
+};
+
+const mapLabCase = (labCase) => {
+  if (!labCase) return labCase;
+  return {
+    ...labCase,
+    status: mapStatusFromDb(labCase.status)
+  };
+};
+
 const listLabCases = async ({ clinicId, userId, role }) => {
   const where = { clinicId };
   if (role === 'patient') {
@@ -12,7 +30,7 @@ const listLabCases = async ({ clinicId, userId, role }) => {
     }
   }
 
-  return prisma.labCase.findMany({
+  const labCases = await prisma.labCase.findMany({
     where,
     include: {
       crownDetails: true,
@@ -20,6 +38,8 @@ const listLabCases = async ({ clinicId, userId, role }) => {
     },
     orderBy: { createdAt: 'desc' }
   });
+
+  return labCases.map(mapLabCase);
 };
 
 const getLabCaseById = async ({ id, clinicId }) => {
@@ -33,7 +53,7 @@ const getLabCaseById = async ({ id, clinicId }) => {
   if (!labCase) {
     throw Object.assign(new Error('Lab case not found'), { statusCode: 404 });
   }
-  return labCase;
+  return mapLabCase(labCase);
 };
 
 const createLabCase = async ({ clinicId, body }) => {
@@ -79,7 +99,7 @@ const createLabCase = async ({ clinicId, body }) => {
     }
   });
 
-  return labCase;
+  return mapLabCase(labCase);
 };
 
 const updateLabCaseStatus = async ({ id, clinicId, status }) => {
@@ -87,11 +107,12 @@ const updateLabCaseStatus = async ({ id, clinicId, status }) => {
   if (!labCase) {
     throw Object.assign(new Error('Lab case not found'), { statusCode: 404 });
   }
-  return prisma.labCase.update({
+  const updatedLabCase = await prisma.labCase.update({
     where: { id },
-    data: { status },
+    data: { status: mapStatusToDb(status) },
     include: { crownDetails: true, implantDetails: true }
   });
+  return mapLabCase(updatedLabCase);
 };
 
 const assignLabCase = async ({ id, clinicId, labName, expectedDelivery }) => {
@@ -99,7 +120,7 @@ const assignLabCase = async ({ id, clinicId, labName, expectedDelivery }) => {
   if (!labCase) {
     throw Object.assign(new Error('Lab case not found'), { statusCode: 404 });
   }
-  return prisma.labCase.update({
+  const updatedLabCase = await prisma.labCase.update({
     where: { id },
     data: { 
       labName, 
@@ -108,6 +129,7 @@ const assignLabCase = async ({ id, clinicId, labName, expectedDelivery }) => {
     },
     include: { crownDetails: true, implantDetails: true }
   });
+  return mapLabCase(updatedLabCase);
 };
 
 const updateImplantStage = async ({ id, clinicId, stage, planningNotes, dimensions, surgicalNotes }) => {
@@ -138,11 +160,12 @@ const updateImplantStage = async ({ id, clinicId, stage, planningNotes, dimensio
   if (stage === 'Delivered') matchingStatus = 'Delivered';
 
   if (matchingStatus !== labCase.status) {
-    return prisma.labCase.update({
+    const updatedLabCase = await prisma.labCase.update({
       where: { id },
-      data: { status: matchingStatus },
+      data: { status: mapStatusToDb(matchingStatus) },
       include: { crownDetails: true, implantDetails: true }
     });
+    return mapLabCase(updatedLabCase);
   }
 
   return getLabCaseById({ id, clinicId });
