@@ -75,8 +75,8 @@ const createTreatmentPlan = async (req, res, next) => {
   try {
     const { id: patientId } = req.params;
     const clinicId = req.clinicId || req.user.clinicId;
-    const { tooth, procedure, cost, status } = req.body;
-    const result = await patientService.createTreatmentPlan({ patientId, clinicId, tooth, procedure, cost, status });
+    const { tooth, procedure, cost, status, optionGroup, phase } = req.body;
+    const result = await patientService.createTreatmentPlan({ patientId, clinicId, tooth, procedure, cost, status, optionGroup, phase });
     return success(res, result, 'Treatment plan created successfully', 201);
   } catch (err) {
     next(err);
@@ -146,7 +146,7 @@ const createXray = async (req, res, next) => {
   try {
     const { id: patientId } = req.params;
     const clinicId = req.clinicId || req.user.clinicId;
-    const { notes, isScanned, aiReport, type } = req.body;
+    const { notes, isScanned, aiReport, type, toothNumber } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -163,6 +163,7 @@ const createXray = async (req, res, next) => {
       aiReport,
       fileUrl,
       type: type || 'General',
+      toothNumber: toothNumber || null,
     });
     return success(res, result, 'X-ray record added successfully', 201);
   } catch (err) {

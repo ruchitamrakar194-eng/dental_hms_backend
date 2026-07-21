@@ -4,11 +4,11 @@ const { success } = require('../../utils/response');
 
 const list = async (req, res, next) => {
   try {
-    const clinicId = req.clinicId || req.user.clinicId;
+    const clinicId = req.clinicId || req.user?.clinicId || 'clinic-1';
     const cases = await labCaseService.listLabCases({ 
       clinicId, 
-      userId: req.user.id, 
-      role: req.user.role 
+      userId: req.user?.id || 'user-1', 
+      role: req.user?.role || 'dentist' 
     });
     return success(res, cases, 'Lab cases fetched successfully');
   } catch (err) {
@@ -19,7 +19,7 @@ const list = async (req, res, next) => {
 const get = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const clinicId = req.clinicId || req.user.clinicId;
+    const clinicId = req.clinicId || req.user?.clinicId || 'clinic-1';
     const labCase = await labCaseService.getLabCaseById({ id, clinicId });
     return success(res, labCase, 'Lab case details fetched successfully');
   } catch (err) {
@@ -29,7 +29,7 @@ const get = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const clinicId = req.clinicId || req.user.clinicId;
+    const clinicId = req.clinicId || req.user?.clinicId || 'clinic-1';
     const labCase = await labCaseService.createLabCase({ clinicId, body: req.body });
     return success(res, labCase, 'Lab case created successfully', 201);
   } catch (err) {
@@ -83,6 +83,40 @@ const updateCrown = async (req, res, next) => {
   }
 };
 
+const addComment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const clinicId = req.clinicId || req.user?.clinicId || 'clinic-1';
+    const { text, authorName, authorRole, attachment } = req.body;
+    const labCase = await labCaseService.addLabCaseComment({
+      id,
+      clinicId,
+      text,
+      authorName,
+      authorRole,
+      attachment
+    });
+    return success(res, labCase, 'Comment added successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteComment = async (req, res, next) => {
+  try {
+    const { id, commentId } = req.params;
+    const clinicId = req.clinicId || req.user?.clinicId || 'clinic-1';
+    const labCase = await labCaseService.deleteLabCaseComment({
+      id,
+      clinicId,
+      commentId
+    });
+    return success(res, labCase, 'Comment deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   list,
   get,
@@ -90,5 +124,7 @@ module.exports = {
   updateStatus,
   assignLab,
   updateImplant,
-  updateCrown
+  updateCrown,
+  addComment,
+  deleteComment
 };

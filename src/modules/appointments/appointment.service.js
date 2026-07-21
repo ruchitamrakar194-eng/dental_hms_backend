@@ -31,21 +31,9 @@ const listAppointments = async ({ clinicId, role, userId, date }) => {
     ];
   }
 
-  // Assistant: sees appointments assigned to them OR appointments for dentists they assist
+  // Assistant: sees appointments explicitly assigned to them
   if (role === 'dental_assistant' || role === 'assistant') {
-    where.OR = [
-      { assignedAssistantId: userId },
-      {
-        assignedDoctor: {
-          assistantId: userId
-        }
-      },
-      {
-        dentist: {
-          assistantId: userId
-        }
-      }
-    ];
+    where.assignedAssistantId = userId;
   }
 
   // Patient: sees only their own appointments

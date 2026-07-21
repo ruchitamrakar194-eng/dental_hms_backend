@@ -188,7 +188,10 @@ const registerClinic = async (req, res, next) => {
  */
 const registerPatient = async (req, res, next) => {
   try {
-    const { name, email, phone, age, gender, address, allergies, insuranceProvider, clinicId, password } = req.body;
+    const {
+      name, email, phone, age, gender, address, allergies, insuranceProvider, clinicId, password,
+      prevDentistName, prevDentistClinic, prevDentistPhone, lastDentalVisit, medicalNotes, dentalNotes
+    } = req.body;
 
     if (!name || !phone || !email) {
       return error(res, 'Name, phone, and email are required', 400);
@@ -221,10 +224,19 @@ const registerPatient = async (req, res, next) => {
       }
     });
 
-    // Format allergies (array → comma-separated string for storage, or keep as is)
+    // Format allergies
     const allergyStr = Array.isArray(allergies)
       ? allergies.join(', ')
       : (allergies || 'None');
+
+    const historyObj = {
+      prevDentistName: prevDentistName || '',
+      prevDentistClinic: prevDentistClinic || '',
+      prevDentistPhone: prevDentistPhone || '',
+      lastDentalVisit: lastDentalVisit || '',
+      medicalNotes: medicalNotes || '',
+      dentalNotes: dentalNotes || ''
+    };
 
     const patient = await prisma.patient.create({
       data: {
@@ -236,6 +248,7 @@ const registerPatient = async (req, res, next) => {
         address: address || null,
         allergies: allergyStr,
         insuranceProvider: insuranceProvider || 'None',
+        history: JSON.stringify(historyObj),
         status: 'Active',
         clinicId: clinicId || null,
         userId: user.id,

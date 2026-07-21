@@ -1,12 +1,18 @@
 require('dotenv').config();
-const clinicService = require('./src/modules/clinics/clinic.service');
+const prisma = require('./src/config/db');
+const labCaseService = require('./src/modules/labCases/labCase.service');
 
 async function test() {
   try {
-    const res = await clinicService.deleteClinic('817d953e-d31c-4ebb-9256-c5e005f27c15');
-    console.log('SUCCESS:', res);
+    const cases = await labCaseService.listLabCases({ clinicId: 'clinic-1', userId: 'u1', role: 'dentist' });
+    console.log('LIST LAB CASES PERSISTED COMMENTS:');
+    cases.forEach(c => {
+      console.log(`Case ID: ${c.id} | Type: ${c.type} | Comments Count: ${c.comments ? c.comments.length : 0}`);
+    });
   } catch(e) {
     console.error('ERROR:', e);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 test();

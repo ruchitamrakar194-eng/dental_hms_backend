@@ -343,7 +343,7 @@ const updateOdontogram = async ({ patientId, clinicId, chartData }) => {
   });
 };
 
-const createTreatmentPlan = async ({ patientId, clinicId, tooth, procedure, cost, status }) => {
+const createTreatmentPlan = async ({ patientId, clinicId, tooth, procedure, cost, status, optionGroup, phase }) => {
   return prisma.treatmentPlan.create({
     data: {
       clinicId,
@@ -351,7 +351,9 @@ const createTreatmentPlan = async ({ patientId, clinicId, tooth, procedure, cost
       tooth,
       procedure,
       cost: parseFloat(cost) || 0,
-      status: status || 'Proposed'
+      status: status || 'Proposed',
+      optionGroup: optionGroup || 'Option A',
+      phase: phase || 'Phase 1'
     }
   });
 };
@@ -400,12 +402,13 @@ const createClinicalNote = async ({ patientId, clinicId, content, authorId }) =>
   });
 };
 
-const createXray = async ({ patientId, clinicId, name, notes, isScanned, aiReport, fileUrl, type }) => {
+const createXray = async ({ patientId, clinicId, name, notes, isScanned, aiReport, fileUrl, type, toothNumber }) => {
   const notePrefix = type ? `[${type}] ` : '';
   return prisma.xrayFile.create({
     data: {
       clinicId,
       patientId,
+      toothNumber: toothNumber || null,
       name: name || 'radiograph_upload.jpg',
       date: new Date(),
       notes: `${notePrefix}${notes || ''}`.trim(),

@@ -187,30 +187,33 @@ model Odontogram {
 }
 
 model TreatmentPlan {
-  id        String          @id @default(uuid())
-  clinicId  String
-  patientId String
-  tooth     String
-  procedure String
-  cost      Float
-  status    TreatmentStatus @default(Proposed)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  patient   Patient         @relation(fields: [patientId], references: [id])
+  id          String          @id @default(uuid())
+  clinicId    String
+  patientId   String
+  tooth       String
+  procedure   String
+  cost        Float
+  status      TreatmentStatus @default(Proposed)
+  optionGroup String          @default("Option A")
+  phase       String          @default("Phase 1")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  patient     Patient         @relation(fields: [patientId], references: [id])
 
   @@index([patientId], map: "treatment_plans_patientId_fkey")
   @@map("treatment_plans")
 }
 
 model XrayFile {
-  id        String   @id @default(uuid())
-  clinicId  String
-  patientId String
-  name      String
-  date      DateTime @db.Date
-  notes     String?  @db.Text
-  isScanned Boolean  @default(false)
-  aiReport  String?  @db.Text
+  id              String   @id @default(uuid())
+  clinicId        String
+  patientId       String
+  toothNumber     String?
+  name            String
+  date            DateTime @db.Date
+  notes           String?  @db.Text
+  isScanned       Boolean  @default(false)
+  aiReport        String?  @db.Text
   fileUrl         String?
   annotationsData String?  @db.LongText
   createdAt       DateTime @default(now())
@@ -290,6 +293,7 @@ model LabCase {
   notes            String?       @db.Text
   attachments      String        @db.LongText
   labName          String        @default("Pending Assignment")
+  comments         String?       @db.LongText
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   crownDetails     CrownCase?
